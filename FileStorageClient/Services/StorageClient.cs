@@ -34,10 +34,15 @@ namespace FileClient.Services
                 string containerName = segments[0];
                 string blobPath = string.Join('/', segments[1..]);
 
-                var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
-                var blobClient = containerClient.GetBlobClient(blobPath);
+                try
+                {
+                    var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+                    var blobClient = containerClient.GetBlobClient(blobPath);
 
-                result = await blobClient.ExistsAsync();
+                    result = await blobClient.ExistsAsync();
+                }
+                catch (Exception ex) { }
+
             }
 
             return result;
