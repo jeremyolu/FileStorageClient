@@ -59,7 +59,17 @@ namespace FileClient.Services
 
             if (fileType == null || fileType.Value == FileType.Disk)
             {
-                try { File.Delete(path); response.Message = "The file has been successfully removed from the local disk."; }
+                try 
+                {   if (!File.Exists(path))
+                    {
+                        response.Message = "The file does not exist on the local disk.";
+                    }
+                    else
+                    {
+                        File.Delete(path);
+                        response.Message = "The file has been successfully removed from the local disk.";
+                    }
+                }
                 catch (Exception ex) { response.Status = false; response.Message = ex.Message; }
             }
             else
