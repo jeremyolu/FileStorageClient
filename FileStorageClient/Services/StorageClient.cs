@@ -2,6 +2,7 @@
 using FileClient.Interfaces;
 using FileClient.Models;
 using FileStorageClient.Models;
+using Microsoft.VisualBasic.FileIO;
 using System.Text;
 
 namespace FileClient.Services
@@ -15,6 +16,73 @@ namespace FileClient.Services
         {
             _connectionString = connectionString;
             _blobServiceClient = new BlobServiceClient(connectionString);
+        }
+
+        public async Task<bool> UploadFileAsync(FileType? fileType, string path, Stream fileStream, Action? onUpload = null)
+        {
+            bool response = false;
+
+            if (string.IsNullOrWhiteSpace(path))
+                throw new ArgumentNullException("Storage file path is currently null.", nameof(path));
+
+            if (fileType == null || fileType.Value == FileType.Disk)
+            {
+                try
+                {
+                    var directory = Path.GetDirectoryName(path);
+
+                    if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                        Directory.CreateDirectory(directory);
+
+                    if (fileStream.CanSeek)
+                        fileStream.Position = 0;
+
+                    using var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
+                    await fileStream.CopyToAsync(fs);
+
+                    onUpload?.Invoke();
+
+                    response = true;
+                }
+                catch (Exception ex)
+                {
+
+                }
+            }
+            else
+            {
+                if (_blobServiceClient == null)
+                    throw new Exception("blob service client is null.");
+
+                string[] segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                string container = segments[0];
+                string blobPath = string.Join('/', segments[1..]);
+
+                try
+                {
+                    var containerClient = _blobServiceClient.GetBlobContainerClient(container);
+
+                    if (!await containerClient.ExistsAsync())
+                        await containerClient.CreateIfNotExistsAsync();
+
+                    var blobClient = containerClient.GetBlobClient(blobPath);
+
+                    if (fileStream.CanSeek)
+                        fileStream.Position = 0;
+
+                    await blobClient.UploadAsync(fileStream, overwrite: true);
+
+                    onUpload?.Invoke();
+
+                    response = true;
+                }
+                catch (Exception ex)
+                {
+
+                }
+            }
+
+            return response;
         }
 
         public async Task<StorageFileResponse> GetFileAsync(FileType? fileType, string path, Action<StorageFileResponse>? onFoundFile = null)
@@ -140,7 +208,7 @@ namespace FileClient.Services
             return result;
         }
 
-        public async Task<FileResponse> DeleteFileAsync(FileType? fileType, string path)
+        public async Task<FileResponse> DeleteFileAsync(FileType? fileType, string path, Action? onDelete = null)
         {
             var response = new FileResponse { Status = true };
 
@@ -157,10 +225,15 @@ namespace FileClient.Services
                     else
                     {
                         File.Delete(path);
+                        onDelete?.Invoke();
+
                         response.Message = "The file has been successfully removed from the local disk.";
                     }
                 }
-                catch (Exception ex) { response.Status = false; response.Message = ex.Message; }
+                catch (Exception ex)
+                {
+
+                }
             }
             else
             {
@@ -189,6 +262,7 @@ namespace FileClient.Services
                     }
 
                     await containerClient?.DeleteBlobAsync(blobPath)!;
+                    onDelete?.Invoke();
 
                     response.Message = "The file has been successfully removed from the storage client.";
                 }
