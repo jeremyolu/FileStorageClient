@@ -2,6 +2,7 @@
 using FileClient.Interfaces;
 using FileClient.Models;
 using FileStorageClient.Models;
+using System.Text;
 
 namespace FileClient.Services
 {
@@ -16,12 +17,12 @@ namespace FileClient.Services
             _blobServiceClient = new BlobServiceClient(connectionString);
         }
 
-        public async Task<StorageFileResponse> GetFile(FileType? fileType, string path)
+        public async Task<StorageFileResponse> GetFileAsync(FileType? fileType, string path, Action<StorageFileResponse>? onFoundFile = null)
         {
             var response = new StorageFileResponse{ Status = false };
 
             if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentNullException("Storage file path is currently null", nameof(path));
+                throw new ArgumentNullException("Storage file path is currently null.", nameof(path));
 
             if (fileType == null || fileType.Value == FileType.Disk)
             {
@@ -35,7 +36,7 @@ namespace FileClient.Services
 
                     var fileBytes = await File.ReadAllBytesAsync(path);
 
-                    return new StorageFileResponse
+                    response = new StorageFileResponse
                     {
                         FileName = Path.GetFileName(path),
                         ContentType = GetContentType(path),
@@ -44,13 +45,20 @@ namespace FileClient.Services
                         Status = true,
                         Message = "File successfully retrieved from local disk."
                     };
+
+                    onFoundFile?.Invoke(response);
+
+                    return response;
                 }
-                catch (Exception ex) { }
+                catch (Exception ex)
+                {
+                    throw;
+                }
             }
             else
             {
                 if (_blobServiceClient == null)
-                    throw new Exception("blob service client is null");
+                    throw new Exception("blob service client is null.");
 
                 string[] segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
                 string container = segments[0];
@@ -77,7 +85,7 @@ namespace FileClient.Services
                     var blobBytes = blob.Value.Content.ToArray();
                     var blobProperties = await blobClient.GetPropertiesAsync();
 
-                    return new StorageFileResponse
+                    response = new StorageFileResponse
                     {
                         FileName = blobClient.Name,
                         ContentType = blobProperties.Value.ContentType,
@@ -86,18 +94,24 @@ namespace FileClient.Services
                         Status = true,
                         Message = "File successfully retrieved from the storage client."
                     };
+
+                    onFoundFile?.Invoke(response);
                 }
-                catch (Exception) { }
+                catch (Exception ex)
+                {
+                    throw;
+                }
             }
 
             return response;
         }
-        public async Task<bool> FileExists(FileType? fileType, string path)
+
+        public async Task<bool> FileExistsAsync(FileType? fileType, string path)
         {
             bool result = false;
 
             if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentNullException("Storage file path is currently null", nameof(path));
+                throw new ArgumentNullException("Storage file path is currently null.", nameof(path));
 
             if (fileType == null || fileType.Value == FileType.Disk)
             {
@@ -106,7 +120,7 @@ namespace FileClient.Services
             else
             {
                 if (_blobServiceClient == null)
-                    throw new Exception("blob service client is null");
+                    throw new Exception("blob service client is null.");
 
                 string[] segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
                 string container = segments[0];
@@ -125,12 +139,13 @@ namespace FileClient.Services
 
             return result;
         }
-        public async Task<FileResponse> DeleteFile(FileType? fileType, string path)
+
+        public async Task<FileResponse> DeleteFileAsync(FileType? fileType, string path)
         {
             var response = new FileResponse { Status = true };
 
             if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentNullException("Storage file path is currently null", nameof(path));
+                throw new ArgumentNullException("Storage file path is currently null.", nameof(path));
 
             if (fileType == null || fileType.Value == FileType.Disk)
             {
@@ -150,7 +165,7 @@ namespace FileClient.Services
             else
             {
                 if (_blobServiceClient == null)
-                    throw new Exception("blob service client is null");
+                    throw new Exception("blob service client is null.");
 
                 string[] segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
                 string container = segments[0];
@@ -181,6 +196,22 @@ namespace FileClient.Services
             }
 
             return response;
+        }
+
+        public string ConvertToBase64(string value)
+        {
+            if (value == null)
+                throw new ArgumentNullException("Value cannot be null.");
+
+            var bytes = Encoding.UTF8.GetBytes(value);
+            return Convert.ToBase64String(bytes);
+        }
+
+        public string ConvertFromBae64(string value)
+        {
+            var bytes = Convert.FromBase64String(value);
+
+            return Encoding.UTF8.GetString(bytes);
         }
 
         private string GetContentType(string filePath)
