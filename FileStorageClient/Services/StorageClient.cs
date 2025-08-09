@@ -18,6 +18,10 @@ namespace FileClient.Services
             _blobServiceClient = new BlobServiceClient(connectionString);
         }
 
+        /// <summary>
+        /// Uploads a file to local disk or Azure Blob Storage asynchronously.
+        /// </summary>
+        /// <returns>Boolean result of upload operation.</returns>
         public async Task<bool> UploadFileAsync(FileType? fileType, string path, Stream fileStream, Action? onUpload = null)
         {
             bool response = false;
@@ -85,6 +89,10 @@ namespace FileClient.Services
             return response;
         }
 
+        /// <summary>
+        /// Gets a file from local disk or Azure Blob Storage asynchronously.
+        /// </summary>
+        /// <returns>StorageFile response of file retrieved.</returns>
         public async Task<StorageFileResponse> GetFileAsync(FileType? fileType, string path, Action<StorageFileResponse>? onFoundFile = null)
         {
             var response = new StorageFileResponse{ Status = false };
@@ -174,6 +182,10 @@ namespace FileClient.Services
             return response;
         }
 
+        /// <summary>
+        /// Checks the presence of a file from local disk or Azure Blob Storage asynchronously.
+        /// </summary>
+        /// <returns>Boolean result of file check operation.</returns>
         public async Task<bool> FileExistsAsync(FileType? fileType, string path)
         {
             bool result = false;
@@ -208,6 +220,10 @@ namespace FileClient.Services
             return result;
         }
 
+        /// <summary>
+        /// Deletes a file from local disk or Azure Blob Storage asynchronously.
+        /// </summary>
+        /// <returns>Boolean result of file delete operation.</returns>
         public async Task<FileResponse> DeleteFileAsync(FileType? fileType, string path, Action? onDelete = null)
         {
             var response = new FileResponse { Status = true };
@@ -272,6 +288,10 @@ namespace FileClient.Services
             return response;
         }
 
+        /// <summary>
+        /// Converts a string to its base64 encoded representation.
+        /// </summary>
+        /// <returns>The base64 encoded string.</returns>
         public string ConvertToBase64(string value)
         {
             if (value == null)
@@ -281,7 +301,11 @@ namespace FileClient.Services
             return Convert.ToBase64String(bytes);
         }
 
-        public string ConvertFromBae64(string value)
+        /// <summary>
+        /// Decodes a base64 encoded string back to its original representation.
+        /// </summary>
+        /// <returns>The decoded string.</returns>
+        public string ConvertFromBase64(string value)
         {
             var bytes = Convert.FromBase64String(value);
 
